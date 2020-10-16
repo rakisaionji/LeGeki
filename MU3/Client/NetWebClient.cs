@@ -70,16 +70,16 @@ namespace MU3.Client
 			return this.memoryStream_;
 		}
 
-		public static NetHttpClient Create(string url)
+		public static NetWebClient Create(string url)
 		{
-			NetHttpClient netHttpClient = new NetHttpClient();
-			NetHttpClient result;
+			NetWebClient netWebClient = new NetWebClient();
+			NetWebClient result;
 			try
 			{
-				netHttpClient.request_ = (WebRequest.Create(url) as HttpWebRequest);
-				netHttpClient.request_.CachePolicy = netHttpClient.cachePolicy_;
-				netHttpClient.State = 1;
-				result = netHttpClient;
+				netWebClient.request_ = (WebRequest.Create(url) as HttpWebRequest);
+				netWebClient.request_.CachePolicy = netWebClient.cachePolicy_;
+				netWebClient.State = 1;
+				result = netWebClient;
 			}
 			catch (Exception)
 			{
@@ -125,7 +125,7 @@ namespace MU3.Client
 			this.request_.ContentType = "application/json";
 			this.request_.UserAgent = ((!string.IsNullOrEmpty(userAgent)) ? userAgent : string.Empty);
 			this.request_.Headers.Add("charset", "UTF-8");
-			this.encoding_ = ((!compress) ? NetHttpClient.Encoding.Raw : NetHttpClient.Encoding.Deflate);
+			this.encoding_ = ((!compress) ? NetWebClient.Encoding.Raw : NetWebClient.Encoding.Deflate);
 			this.resetStatus();
 			bool result;
 			try
@@ -165,9 +165,9 @@ namespace MU3.Client
 			try
 			{
 				this.releaseTimeoutWaitHandle();
-				IAsyncResult asyncResult = this.request_.BeginGetResponse(new AsyncCallback(NetHttpClient.responseCallback), this);
+				IAsyncResult asyncResult = this.request_.BeginGetResponse(new AsyncCallback(NetWebClient.responseCallback), this);
 				this.waitHandle_ = asyncResult.AsyncWaitHandle;
-				this.timeoutWaitHandle_ = ThreadPool.RegisterWaitForSingleObject(this.waitHandle_, new WaitOrTimerCallback(NetHttpClient.timeoutCallback), this, this.timeoutMSec_, true);
+				this.timeoutWaitHandle_ = ThreadPool.RegisterWaitForSingleObject(this.waitHandle_, new WaitOrTimerCallback(NetWebClient.timeoutCallback), this, this.timeoutMSec_, true);
 				this.State = 3;
 				result = true;
 			}
@@ -244,13 +244,13 @@ namespace MU3.Client
 			{
 				return;
 			}
-			NetHttpClient netHttpClient = state as NetHttpClient;
-			if (netHttpClient.request_ == null)
+			NetWebClient netWebClient = state as NetWebClient;
+			if (netWebClient.request_ == null)
 			{
-				netHttpClient.setError(WebExceptionStatus.UnknownError, string.Empty, 5, null);
+				netWebClient.setError(WebExceptionStatus.UnknownError, string.Empty, 5, null);
 				return;
 			}
-			netHttpClient.setError(WebExceptionStatus.Timeout, string.Empty, 5, null);
+			netWebClient.setError(WebExceptionStatus.Timeout, string.Empty, 5, null);
 		}
 
 		private void setError(WebExceptionStatus status, string error, int state, HttpWebResponse response)
@@ -276,41 +276,41 @@ namespace MU3.Client
 
 		private static void requestCallback(IAsyncResult asynchronousResult)
 		{
-			NetHttpClient netHttpClient = asynchronousResult.AsyncState as NetHttpClient;
+			NetWebClient netWebClient = asynchronousResult.AsyncState as NetWebClient;
 			Stream stream = null;
 			try
 			{
-				HttpWebRequest httpWebRequest = netHttpClient.request_;
+				HttpWebRequest httpWebRequest = netWebClient.request_;
 				stream = httpWebRequest.EndGetRequestStream(asynchronousResult);
-				NetHttpClient.Encoding encoding = netHttpClient.encoding_;
-				if (encoding != NetHttpClient.Encoding.Deflate)
+				NetWebClient.Encoding encoding = netWebClient.encoding_;
+				if (encoding != NetWebClient.Encoding.Deflate)
 				{
-					if (encoding != NetHttpClient.Encoding.GZip)
+					if (encoding != NetWebClient.Encoding.GZip)
 					{
-						stream.Write(netHttpClient.bytes_, 0, netHttpClient.bytes_.Length);
+						stream.Write(netWebClient.bytes_, 0, netWebClient.bytes_.Length);
 					}
 					else
 					{
 						using (GZipStream gzipStream = new GZipStream(stream, CompressionMode.Compress, true))
 						{
-							gzipStream.Write(netHttpClient.bytes_, 0, netHttpClient.bytes_.Length);
+							gzipStream.Write(netWebClient.bytes_, 0, netWebClient.bytes_.Length);
 						}
 					}
 				}
 				else
 				{
-					uint num = NetHttpClient.calcAdler32(netHttpClient.bytes_.LongLength, netHttpClient.bytes_);
+					uint num = NetWebClient.calcAdler32(netWebClient.bytes_.LongLength, netWebClient.bytes_);
 					stream.WriteByte(120);
 					stream.WriteByte(156);
-					if (netHttpClient.bytes_.Length <= 128)
+					if (netWebClient.bytes_.Length <= 128)
 					{
-						NetHttpClient.deflateRawBlock(stream, netHttpClient.bytes_, 0, netHttpClient.bytes_.Length);
+						NetWebClient.deflateRawBlock(stream, netWebClient.bytes_, 0, netWebClient.bytes_.Length);
 					}
 					else
 					{
 						using (DeflateStream deflateStream = new DeflateStream(stream, CompressionMode.Compress, true))
 						{
-							deflateStream.Write(netHttpClient.bytes_, 0, netHttpClient.bytes_.Length);
+							deflateStream.Write(netWebClient.bytes_, 0, netWebClient.bytes_.Length);
 						}
 					}
 					stream.WriteByte((byte)(num >> 24 & 255U));
@@ -318,19 +318,19 @@ namespace MU3.Client
 					stream.WriteByte((byte)(num >> 8 & 255U));
 					stream.WriteByte((byte)(num >> 0 & 255U));
 				}
-				netHttpClient.request();
+				netWebClient.request();
 			}
 			catch (WebException ex)
 			{
-				netHttpClient.setError(ex.Status, ex.Message, 5, ex.Response as HttpWebResponse);
+				netWebClient.setError(ex.Status, ex.Message, 5, ex.Response as HttpWebResponse);
 			}
 			catch (Exception ex2)
 			{
-				netHttpClient.setError(WebExceptionStatus.UnknownError, ex2.Message, 5, null);
+				netWebClient.setError(WebExceptionStatus.UnknownError, ex2.Message, 5, null);
 			}
 			finally
 			{
-				netHttpClient.bytes_ = null;
+				netWebClient.bytes_ = null;
 				if (stream != null)
 				{
 					stream.Close();
@@ -340,28 +340,28 @@ namespace MU3.Client
 
 		private static void responseCallback(IAsyncResult asynchronousResult)
 		{
-			NetHttpClient netHttpClient = asynchronousResult.AsyncState as NetHttpClient;
+			NetWebClient netWebClient = asynchronousResult.AsyncState as NetWebClient;
 			try
 			{
-				HttpWebRequest httpWebRequest = netHttpClient.request_;
-				netHttpClient.response_ = (httpWebRequest.EndGetResponse(asynchronousResult) as HttpWebResponse);
-				netHttpClient.responseStream_ = netHttpClient.response_.GetResponseStream();
-				netHttpClient.memoryStream_.SetLength(0L);
-				netHttpClient.memoryStream_.Seek(0L, SeekOrigin.Begin);
-				NetHttpClient.Encoding encoding = netHttpClient.encoding_;
-				if (encoding == NetHttpClient.Encoding.Deflate || encoding == NetHttpClient.Encoding.GZip)
+				HttpWebRequest httpWebRequest = netWebClient.request_;
+				netWebClient.response_ = (httpWebRequest.EndGetResponse(asynchronousResult) as HttpWebResponse);
+				netWebClient.responseStream_ = netWebClient.response_.GetResponseStream();
+				netWebClient.memoryStream_.SetLength(0L);
+				netWebClient.memoryStream_.Seek(0L, SeekOrigin.Begin);
+				NetWebClient.Encoding encoding = netWebClient.encoding_;
+				if (encoding == NetWebClient.Encoding.Deflate || encoding == NetWebClient.Encoding.GZip)
 				{
-					netHttpClient.compressedStream_ = new MemoryStream((0L >= netHttpClient.response_.ContentLength) ? 1024 : ((int)netHttpClient.response_.ContentLength));
+					netWebClient.compressedStream_ = new MemoryStream((0L >= netWebClient.response_.ContentLength) ? 1024 : ((int)netWebClient.response_.ContentLength));
 				}
-				netHttpClient.responseStream_.BeginRead(netHttpClient.buffer_, 0, 1024, new AsyncCallback(NetHttpClient.readCallback), netHttpClient);
+				netWebClient.responseStream_.BeginRead(netWebClient.buffer_, 0, 1024, new AsyncCallback(NetWebClient.readCallback), netWebClient);
 			}
 			catch (WebException ex)
 			{
-				netHttpClient.setError(ex.Status, ex.Message, 5, ex.Response as HttpWebResponse);
+				netWebClient.setError(ex.Status, ex.Message, 5, ex.Response as HttpWebResponse);
 			}
 			catch (Exception ex2)
 			{
-				netHttpClient.setError(WebExceptionStatus.UnknownError, ex2.Message, 5, null);
+				netWebClient.setError(WebExceptionStatus.UnknownError, ex2.Message, 5, null);
 			}
 		}
 
@@ -380,62 +380,62 @@ namespace MU3.Client
 
 		private static void readCallback(IAsyncResult asynchronousResult)
 		{
-			NetHttpClient netHttpClient = asynchronousResult.AsyncState as NetHttpClient;
+			NetWebClient netWebClient = asynchronousResult.AsyncState as NetWebClient;
 			try
 			{
-				Stream stream = netHttpClient.responseStream_;
+				Stream stream = netWebClient.responseStream_;
 				int num = stream.EndRead(asynchronousResult);
 				if (0 < num)
 				{
-					if (netHttpClient.compressedStream_ != null)
+					if (netWebClient.compressedStream_ != null)
 					{
-						netHttpClient.compressedStream_.Write(netHttpClient.buffer_, 0, num);
+						netWebClient.compressedStream_.Write(netWebClient.buffer_, 0, num);
 					}
 					else
 					{
-						netHttpClient.memoryStream_.Write(netHttpClient.buffer_, 0, num);
+						netWebClient.memoryStream_.Write(netWebClient.buffer_, 0, num);
 					}
-					stream.BeginRead(netHttpClient.buffer_, 0, 1024, new AsyncCallback(NetHttpClient.readCallback), netHttpClient);
+					stream.BeginRead(netWebClient.buffer_, 0, 1024, new AsyncCallback(NetWebClient.readCallback), netWebClient);
 				}
 				else if (asynchronousResult.IsCompleted)
 				{
-					NetHttpClient.Encoding encoding = netHttpClient.encoding_;
-					if (encoding != NetHttpClient.Encoding.Deflate)
+					NetWebClient.Encoding encoding = netWebClient.encoding_;
+					if (encoding != NetWebClient.Encoding.Deflate)
 					{
-						if (encoding == NetHttpClient.Encoding.GZip)
+						if (encoding == NetWebClient.Encoding.GZip)
 						{
-							netHttpClient.compressedStream_.Seek(0L, SeekOrigin.Begin);
-							using (GZipStream gzipStream = new GZipStream(netHttpClient.compressedStream_, CompressionMode.Decompress, true))
+							netWebClient.compressedStream_.Seek(0L, SeekOrigin.Begin);
+							using (GZipStream gzipStream = new GZipStream(netWebClient.compressedStream_, CompressionMode.Decompress, true))
 							{
-								NetHttpClient.copyTo(netHttpClient.memoryStream_, gzipStream, netHttpClient.buffer_, 1024);
+								NetWebClient.copyTo(netWebClient.memoryStream_, gzipStream, netWebClient.buffer_, 1024);
 							}
 						}
 					}
 					else
 					{
-						netHttpClient.compressedStream_.Seek(0L, SeekOrigin.Begin);
-						netHttpClient.compressedStream_.ReadByte();
-						netHttpClient.compressedStream_.ReadByte();
-						using (DeflateStream deflateStream = new DeflateStream(netHttpClient.compressedStream_, CompressionMode.Decompress, true))
+						netWebClient.compressedStream_.Seek(0L, SeekOrigin.Begin);
+						netWebClient.compressedStream_.ReadByte();
+						netWebClient.compressedStream_.ReadByte();
+						using (DeflateStream deflateStream = new DeflateStream(netWebClient.compressedStream_, CompressionMode.Decompress, true))
 						{
-							NetHttpClient.copyTo(netHttpClient.memoryStream_, deflateStream, netHttpClient.buffer_, 1024);
+							NetWebClient.copyTo(netWebClient.memoryStream_, deflateStream, netWebClient.buffer_, 1024);
 						}
-						if (!NetHttpClient.checkHash(netHttpClient.compressedStream_, netHttpClient.memoryStream_))
+						if (!NetWebClient.checkHash(netWebClient.compressedStream_, netWebClient.memoryStream_))
 						{
-							netHttpClient.setError(WebExceptionStatus.UnknownError, "Invalid Hash", 5, null);
+							netWebClient.setError(WebExceptionStatus.UnknownError, "Invalid Hash", 5, null);
 							return;
 						}
 					}
-					netHttpClient.setSuccess(4);
+					netWebClient.setSuccess(4);
 				}
 			}
 			catch (WebException ex)
 			{
-				netHttpClient.setError(ex.Status, ex.Message, 5, ex.Response as HttpWebResponse);
+				netWebClient.setError(ex.Status, ex.Message, 5, ex.Response as HttpWebResponse);
 			}
 			catch (Exception ex2)
 			{
-				netHttpClient.setError(WebExceptionStatus.UnknownError, ex2.Message, 5, null);
+				netWebClient.setError(WebExceptionStatus.UnknownError, ex2.Message, 5, null);
 			}
 		}
 
@@ -444,7 +444,7 @@ namespace MU3.Client
 			try
 			{
 				this.bytes_ = bytes;
-				this.request_.BeginGetRequestStream(new AsyncCallback(NetHttpClient.requestCallback), this);
+				this.request_.BeginGetRequestStream(new AsyncCallback(NetWebClient.requestCallback), this);
 			}
 			catch
 			{
@@ -465,8 +465,8 @@ namespace MU3.Client
 			ushort num = (ushort)size;
 			ushort x = unchecked((ushort)~num);
 			stream.WriteByte(value);
-			NetHttpClient.write(stream, num);
-			NetHttpClient.write(stream, x);
+			NetWebClient.write(stream, num);
+			NetWebClient.write(stream, x);
 			stream.Write(buffer, offset, size);
 		}
 
@@ -509,7 +509,7 @@ namespace MU3.Client
 			num |= (uint)((uint)((byte)received.ReadByte()) << 16);
 			num |= (uint)((uint)((byte)received.ReadByte()) << 8);
 			num |= (uint)((uint)((byte)received.ReadByte()) << 0);
-			uint num2 = NetHttpClient.calcAdler32(decompressed);
+			uint num2 = NetWebClient.calcAdler32(decompressed);
 			return num2 == num;
 		}
 
@@ -573,7 +573,7 @@ namespace MU3.Client
 
 		private byte[] bytes_;
 
-		private NetHttpClient.Encoding encoding_;
+		private NetWebClient.Encoding encoding_;
 
 		public enum Encoding
 		{
