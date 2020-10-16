@@ -51,7 +51,7 @@ namespace MU3.Client
 			}
 		}
 
-		public INetQuery query
+		public INetQuery Query
 		{
 			get
 			{
@@ -96,6 +96,18 @@ namespace MU3.Client
 
 		public abstract Packet.State proc();
 
+		public static string scrambleAPI(INetQuery query)
+		{
+			IURLMangling iurlmangling = query as IURLMangling;
+			string text = iurlmangling.Safix;
+			if (string.IsNullOrEmpty(text))
+			{
+				text = Cryptography.Instance.scramble(query.URL);
+				APIInitializer.setSafix(iurlmangling, text);
+			}
+			return text;
+		}
+
 		protected bool create(INetQuery query)
 		{
 			OperationManager instance = Singleton<OperationManager>.instance;
@@ -120,7 +132,7 @@ namespace MU3.Client
 		{
 			OperationManager instance = Singleton<OperationManager>.instance;
 			string baseUri = instance.getBaseUri();
-			this.client_ = NetWebClient.Create(baseUri + this.query.URL);
+			this.client_ = NetWebClient.Create(baseUri + this.query_.URL);
 			this.time_ = 0f;
 			if (this.client_ != null)
 			{
@@ -193,7 +205,7 @@ namespace MU3.Client
 				try
 				{
 					string request = this.query_.getRequest();
-					if (!this.client_.request(Encoding.UTF8.GetBytes(request), NetPacketUtil.getUserAgent(this.query_), this.query_.Compress, "POST"))
+					if (!this.client_.request(Encoding.UTF8.GetBytes(request), NetPacketUtil.getUserAgent(this.query_), this.query_.Compress))
 					{
 						this.procResult();
 					}
