@@ -75,7 +75,7 @@ namespace MU3.Client
 			NetWebClient.shared_ = new NetWebClient.Shared(1024);
 		}
 
-		public static NetWebClient Create(string url)
+		public static NetWebClient Create(string url, int encryptVersion = 0)
 		{
 			NetWebClient netWebClient = new NetWebClient();
 			NetWebClient result;
@@ -83,6 +83,7 @@ namespace MU3.Client
 			{
 				netWebClient.request_ = (WebRequest.Create(url) as HttpWebRequest);
 				netWebClient.request_.CachePolicy = netWebClient.cachePolicy_;
+				netWebClient.encryptVersion_ = encryptVersion;
 				netWebClient.State = 1;
 				result = netWebClient;
 			}
@@ -124,9 +125,9 @@ namespace MU3.Client
 			return result;
 		}
 
-		public bool request(byte[] bytes, string userAgent, bool compress, bool encrypt = false, string method = "POST")
+		public bool request(byte[] bytes, string userAgent, bool compress)
 		{
-			this.request_.Method = method;
+			this.request_.Method = "POST";
 			this.request_.ContentType = "application/json";
 			this.request_.UserAgent = ((!string.IsNullOrEmpty(userAgent)) ? userAgent : string.Empty);
 			this.request_.Headers.Add("charset", "UTF-8");
@@ -140,11 +141,12 @@ namespace MU3.Client
 				{
 					if (compress)
 					{
-						this.request_.Headers.Add(HttpRequestHeader.ContentEncoding, "deflate");
+						this.request_.Headers.Add("Content-Encoding", "deflate");
 					}
+					bool encrypt = 0 < this.encryptVersion_;
 					if (encrypt)
 					{
-						this.request_.Headers.Add("MU3-Encoding", "1.0");
+						this.request_.Headers.Add("Ongeki-Encoding", this.encryptVersion_.ToString());
 					}
 					this.bytes_ = NetWebClient.preprocess(bytes, NetWebClient.shared_.memoryStream_, this.encoding_, encrypt);
 					this.beginGetRequestStream();
@@ -373,8 +375,6 @@ namespace MU3.Client
 			{
 				HttpWebRequest httpWebRequest = netWebClient.request_;
 				netWebClient.response_ = (httpWebRequest.EndGetResponse(asynchronousResult) as HttpWebResponse);
-				string text = netWebClient.response_.Headers.Get("MU3-Encoding");
-				netWebClient.encrypted_ = (!string.IsNullOrEmpty(text) && "1.0" == text);
 				netWebClient.responseStream_ = netWebClient.response_.GetResponseStream();
 				NetWebClient.clearStream(NetWebClient.shared_.memoryStream_);
 				netWebClient.responseStream_.BeginRead(NetWebClient.shared_.buffer_, 0, 1024, new AsyncCallback(NetWebClient.readCallback), netWebClient);
@@ -461,7 +461,7 @@ namespace MU3.Client
 				{
 					byte[] buffer_ = NetWebClient.shared_.buffer_;
 					NetWebClient.shared_.memoryStream_.Position = 0L;
-					if (netWebClient.encrypted_)
+					if (0 < netWebClient.encryptVersion_)
 					{
 						if (NetWebClient.descryptTo(NetWebClient.shared_.compressedStream_, NetWebClient.shared_.memoryStream_) < 0)
 						{
@@ -646,7 +646,7 @@ namespace MU3.Client
 
 		private NetWebClient.Encoding encoding_;
 
-		private bool encrypted_;
+		private int encryptVersion_;
 
 		public enum Encoding
 		{

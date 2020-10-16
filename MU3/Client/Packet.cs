@@ -112,8 +112,9 @@ namespace MU3.Client
 		{
 			OperationManager instance = Singleton<OperationManager>.instance;
 			string baseUri = instance.getBaseUri();
+			string apiName = (0 < NetConfig.EncryptVersion) ? Packet.scrambleAPI(query) : query.URL;
 			this.query_ = query;
-			this.client_ = NetWebClient.Create(baseUri + query.URL);
+			this.client_ = NetWebClient.Create(baseUri + apiName, NetConfig.EncryptVersion);
 			this.retryCount_ = 0;
 			this.time_ = 0f;
 			if (this.client_ != null)
@@ -132,7 +133,8 @@ namespace MU3.Client
 		{
 			OperationManager instance = Singleton<OperationManager>.instance;
 			string baseUri = instance.getBaseUri();
-			this.client_ = NetWebClient.Create(baseUri + this.query_.URL);
+			string apiName = (0 < NetConfig.EncryptVersion) ? Packet.scrambleAPI(this.query_) : this.query_.URL;
+			this.client_ = NetWebClient.Create(baseUri + apiName, NetConfig.EncryptVersion);
 			this.time_ = 0f;
 			if (this.client_ != null)
 			{
