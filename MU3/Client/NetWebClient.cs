@@ -3,6 +3,8 @@ using System.IO;
 using System.IO.Compression;
 using System.Net;
 using System.Net.Cache;
+using System.Net.Security;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 
 namespace MU3.Client
@@ -75,7 +77,26 @@ namespace MU3.Client
 			NetWebClient.shared_ = new NetWebClient.Shared(1024);
 		}
 
-		public static NetWebClient Create(string url, int encryptVersion = 0)
+		public static bool CertificateValidation(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+		{
+			DateTime notAfter;
+			if (certificate is X509Certificate2)
+			{
+				X509Certificate2 x509Certificate2 = certificate as X509Certificate2;
+				notAfter = x509Certificate2.NotAfter;
+			}
+			else if (!DateTime.TryParse(certificate.GetExpirationDateString(), out notAfter))
+			{
+				return false;
+			}
+			if (-1 != certificate.Subject.IndexOf("CN=*.sic-rd1.jp"))
+			{
+				return true;
+			}
+			return false;
+		}
+
+		public static NetWebClient Create(string url, int encryptVersion, bool tls)
 		{
 			NetWebClient netWebClient = new NetWebClient();
 			NetWebClient result;
@@ -85,6 +106,11 @@ namespace MU3.Client
 				netWebClient.request_.CachePolicy = netWebClient.cachePolicy_;
 				netWebClient.encryptVersion_ = encryptVersion;
 				netWebClient.State = 1;
+				if (tls)
+				{
+					ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(NetWebClient.CertificateValidation);
+					ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls;
+				}
 				result = netWebClient;
 			}
 			catch (Exception)
