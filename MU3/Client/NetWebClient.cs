@@ -430,7 +430,12 @@ namespace MU3.Client
 			outStream.Write(tmp_, 0, num);
 			outStream.Position = 0L;
 			inStream.Position = 0L;
-			return Cryptography.Instance.checkPadding(num, tmp_);
+			num = Cryptography.Instance.checkPadding(num, tmp_);
+			if (num > 0)
+			{
+				outStream.SetLength((long)num);
+			}
+			return num;
 		}
 
 		private static void swap<T>(ref T x0, ref T x1)
